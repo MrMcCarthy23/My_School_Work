@@ -27,7 +27,9 @@ void Vehicle::setCyl(int cyl) {
 }
 //setOwner function calls ctor for type person
 void Vehicle::setOwner(std::string name) {
-	owner = owner.setname(name);
+	temp = new owner(name);
+	delete owner;
+	owner = temp;
 }
 
 //overloaded assignment operator definition
