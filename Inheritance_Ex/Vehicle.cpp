@@ -20,14 +20,14 @@ std::string Vehicle::getOwner() const { return this->owner.getName(); }
 
 //setter definitions
 void Vehicle::setMake(std::string make) {
-	this->make = make;
+	make = make;
 }
 void Vehicle::setCyl(int cyl) {
-	this->cylinders = cyl;
+	cylinders = cyl;
 }
 //setOwner function calls ctor for type person
 void Vehicle::setOwner(std::string name) {
-	this->owner = Person(name);
+	owner = owner.setname(name);
 }
 
 //overloaded assignment operator definition
