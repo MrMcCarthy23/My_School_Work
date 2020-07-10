@@ -1,125 +1,207 @@
 //Mark McCarthy
 
-//This program implements a simulation of the 
-//round robin scheduling algorithm using stl queue
+/*This program evaluates a user given postfix 
+expression by leveraging the LIFO property of the 
+stack data structure using std::stack template*/
 
-#include "Process.h"
-#include <iostream>
-#include <queue>
-#include <fstream>
-#include <vector>
+#include<iostream>
+#include<stack>
+#include<exception>
+#include<vector>
+#include<sstream>
 
 using namespace std;
 
-void arrivals(vector<Process>& vec, queue<Process>& q, int time);
+	//custom exception declaration and definitions//
+
+//Invalid_Postfix_Ex is thrown when there is an 
+//error in the input expression and can not be 
+//evaluated correctly.2
+struct Invalid_Postfix_Ex : public exception {
+	const char* what() const override {
+		return"ERROR: Invalid Postfix Expression.\n";
+	}
+};
+
+//Zero_Division is thrown when the denominator
+//of an operation from the stack is 0.
+struct Zero_Division : public exception {
+	const char* what() const override {
+		return "ERROR: Division by Zero.\n";
+	}
+};
+
+//function to determine if there are sufficient 
+//elts in the stack to do an operation.
+void can_operate(stack<int> stk);
 
 int main() {
-	//init containers, var, and fstream obj 
-	vector<Process> vec;
-	queue<Process> q;
-	ifstream file;
-	Process temp;
-	int id, at, tr, time = 0;
-	int exit_flag = 0;
 
-	//open text file 
-	file.open("round_robin.txt");
+	//init stack
+	stack<int> expression;
 
-	//if opened successfuly, read in the  
-	if (file.is_open()) {
+	//init all var
+	char curr;
+	string input;
+	int temp, num_2, num_1, result,i = 0,flag = 1;
 
-		//while loop uses the formatted input for arithmetic
-		//types feature of the operator >> as a conditional
-		//statement to navigate the file and to read in the 
-		//values for the process class. Then inits a process
-		//type and stores it to a vector.
-		while (file>>id>>at>>tr) {
-			Process p(id, at, tr);
-			vec.push_back(p);
-		}
+	//prompt user for the input string
+	cout << "Enter a Postfix Expression to evaluate."
+		<<"Press enter when done: ";
+	cin >> input;
+
+	/*while loop passes each elt(curr) of the input string through
+	a set of conditions. Based the type of character curr is, curr
+	will either be pushed to the stack, used as an operator, or 
+	cause an exception to be thrown.*/
+	while (i<input.length()) {
 		
-		//close the file
-		file.close();
-	}
-
-	//if the file fails to open output error and exit program
-	else {
-		cerr << "Failed to open file\n";
-		exit(1);
-	}
-
-	/////######################driver loop#######################////
-
-	//use size of the vector as exit cond. for while loop
-	exit_flag = vec.size();
-
-	while (exit_flag > 0) {
-
-		//check the vector for any arrivals and push them to queue
-		arrivals(vec, q, time);
-
-		//if the queue is empty, update time and continue
-		if (q.empty()) {
-			time += 4;
-			continue;
+		curr = input[i];
+		
+		//if curr is a digit char, push it to the stack
+		if (isdigit(curr)) {
+			temp = curr-'0';
+			expression.push(temp);
 		}
 
-		//if the current process at the front of the queue
-		//is going to be completed, mark the finish time 
-		//and pop it from the queue
-		if (q.front().getRtime() <= 4) {
+		//if curr is an operator, perform the operation on the top 
+		//two elts of the stack
+		else if (curr == '+'||curr == '-'||curr == '*'||curr =='/') {
+			
+			//if there are not correct elts available to perform operation
+			// throw Invalid Expression exception
+			try {
+				can_operate(expression);
+			}
+			catch (const Invalid_Postfix_Ex& err) {
+				cerr << err.what() << endl;
+				flag = -1;
+				break;
+			}
+			
+			//else perform the operation matching curr.
+			//operations happen on the top two elts of
+			//the stack. Then the result is pushed to 
+			//the stack.
+			switch (curr) {
+			case'+':
+				num_2 = expression.top();
+				expression.pop();
+				num_1 = expression.top();
+				expression.pop();
+				result = num_1 + num_2;
+				expression.push(result);
+				break;
+			case'-':
+				num_2 = expression.top();
+				expression.pop();
+				num_1 = expression.top();
+				expression.pop();
+				result = num_1 - num_2;
+				expression.push(result);
+				break;
+			case'*':
+				num_2 = expression.top();
+				expression.pop();
+				num_1 = expression.top();
+				expression.pop();
+				result = num_1 * num_2;
+				expression.push(result); 
+				break;
+			case'/':
+				num_2 = expression.top();
+				expression.pop();
+				num_1 = expression.top();
+				expression.pop();
 
-			//set the finish time value
-			q.front().setFtime(time);
-			
-			//output the values for the finished process
-			q.front().print();
-			
-			//pop th efinished process from the queue
-			q.pop();
-			
-			cout << "###########################" << endl;
-			exit_flag--;
-			
-			//update time
-			time += 4;
+				//if there is an operation that would cause 
+				//a division by zero, throw exception
+				try {
+					if (num_2 == 0) {
+						Zero_Division zde;
+						throw zde;
+					}
+				}
+				catch(const Zero_Division& zde){
+					std::cerr << zde.what() << endl;
+					flag = -1;
+					break;
+				}
+				//else continue
+				result = num_1 / num_2;
+				expression.push(result);
+				break;
+			}
 		}
-		//if the current process at the front of the queue is
-		//not going to be finished 
+
+		//if curr is not a digit or an operation, it is 
+		//an Invalid Expression. throw execption
 		else {
-
-			//make a copy of the front of the queue
-			temp = q.front();
-			
-			//pop the queue
-			q.pop();
-			
-			//update time
-			time += 4;
-			
-			//check if there are any new arrivals
-			arrivals(vec, q, time);
-			
-			//update the time req for the process
-			temp.setRtime(temp.getRtime() - 4);
-			
-			//push it back to the queue
-			q.push(temp);
+			try {
+				Invalid_Postfix_Ex err;
+				throw err;
+			}
+			catch (const Invalid_Postfix_Ex& err) {
+				cerr << err.what() <<"Bad character."<< endl;
+				flag = -1;
+			}
+			break;
 		}
+
+		//increment i(move to next char in input string.
+		i++;
+	}
+
+	//if the stack is empty after the calculation
+	//something was incorrect in the expression or there was
+	//none.
+	if(expression.empty()) {
+		try {
+			Invalid_Postfix_Ex err;
+			throw err;
+		}
+		catch (const Invalid_Postfix_Ex& err) {
+			cerr << err.what() <<"stack empty"<< endl;
+			flag = -1;
+		}
+	}
+
+	//if there is more than one number left in the
+	//stack after the calculation, the expression was
+	//invalid.
+	if (expression.size() > 1) {
+		try {
+			Invalid_Postfix_Ex err;
+			throw err;
+		}
+		catch (const Invalid_Postfix_Ex& err) {
+			cerr << err.what() <<"too many nums"<< endl;
+			flag = -1;
+		}
+	}
+
+	//if the expression was evaluated correctly output the result
+	if (flag > 0) {
+		cout << "The expression evaluates to: " << expression.top() << endl;
+	}
+
+	//else something went wrong so do not display incorrect evaluation.
+	else {
+		cout << "The expression could not be evaluated." << endl;
 	}
 }
 
-//function checks the arrival times of the processes int the 
-//vector and enqueues the process(es) if the arrival time(s) match.
-void arrivals(vector<Process>& vec, queue<Process>& q,int time){
+//function determines if there are sufficient
+//conditions to perform an operation on the stack elts
+void can_operate(stack<int> stk) {
 
-	//for loop sweeps the vector for matching arrival times
-	//and sets the bool value Process.added to true if it 
-	//has been added to the queue
-	for (int i = 0; i < vec.size(); i++) {
-		if (time >= vec[i].getAtime() && !vec[i].getAdd()) {
-			q.push(vec[i]);
-			vec[i].setAdd(1);
-		}
+	//make a copy of the stack
+	stack<int> temp = stk;
+
+	//if there are not enough elts to perform
+	//operation throw exception
+	if (temp.size() < 2) {
+		Invalid_Postfix_Ex err;
+		throw err;
 	}
 }
